@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: taxonomy_es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 30s
+
+  api:
+    build: ./backend
+    container_name: taxonomy_api
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - DOCUMENTS_INDEX=taxonomy_documents
+      - TAXONOMY_INDEX=taxonomy_paths
+    ports:
+      - "8000:8000"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build: ./frontend
+    container_name: taxonomy_frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+
+volumes:
+  es_data:
