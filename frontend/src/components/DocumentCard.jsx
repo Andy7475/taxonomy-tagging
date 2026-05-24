@@ -1,10 +1,21 @@
-import { X } from 'lucide-react'
+import { useState } from 'react'
+import { X, Copy, Check } from 'lucide-react'
 
 function getLeaf(path) {
   return path.split('/').pop()
 }
 
 export default function DocumentCard({ doc, andFilters = [], orFilters = [], onDelete, onClick }) {
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy(e) {
+    e.stopPropagation()
+    navigator.clipboard.writeText(doc.icon || '').then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
   return (
     <div
       className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:border-yellow-400 hover:shadow-md transition-all group relative cursor-pointer"
@@ -19,6 +30,16 @@ export default function DocumentCard({ doc, andFilters = [], orFilters = [], onD
           <X className="w-3.5 h-3.5" />
         </button>
       )}
+      <button
+        onClick={handleCopy}
+        className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-slate-600"
+        title="Copy emoji"
+      >
+        {copied
+          ? <Check className="w-3 h-3 text-emerald-500" />
+          : <Copy className="w-3 h-3" />
+        }
+      </button>
       <div className="flex flex-col items-center">
         <span className="text-5xl mb-3 transition-transform group-hover:scale-125 duration-300">
           {doc.icon || '📄'}

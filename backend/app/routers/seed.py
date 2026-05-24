@@ -37,7 +37,7 @@ async def _ensure_parents(path: str, es: AsyncElasticsearch):
 
 @router.post("/seed")
 async def seed_demo_data(es: AsyncElasticsearch = Depends(get_es)):
-    """Seed taxonomy nodes and 50 emoji documents for the demo."""
+    """Seed taxonomy nodes and emoji documents for the demo."""
     now = datetime.now(timezone.utc).isoformat()
 
     for node in TAXONOMY_NODES:
