@@ -20,6 +20,7 @@ const MATCHED_VIA_COLORS = {
 
 export default function TagInput({
   selectedTags = [],
+  additionalExclude = [],
   onAdd,
   onRemove,
   placeholder = 'Type to search tags…',
@@ -36,14 +37,14 @@ export default function TagInput({
     if (!q.trim()) { setSuggestions([]); return }
     setLoading(true)
     try {
-      const results = await api.suggestTags(q, selectedTags)
+      const results = await api.suggestTags(q, [...selectedTags, ...additionalExclude])
       setSuggestions(results)
     } catch {
       setSuggestions([])
     } finally {
       setLoading(false)
     }
-  }, [selectedTags])
+  }, [selectedTags, additionalExclude])
 
   const debouncedFetch = useDebounce(fetchSuggestions, DEBOUNCE_MS)
 

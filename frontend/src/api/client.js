@@ -23,12 +23,15 @@ export const api = {
 
   // Documents
   createDocument: (doc) => request('/documents/', { method: 'POST', body: JSON.stringify(doc) }),
+  getDocument: (id) => request(`/documents/${id}`),
   deleteDocument: (id) => request(`/documents/${id}`, { method: 'DELETE' }),
 
   // Search
-  search: ({ filters = [], q = '', size = 100 } = {}) => {
+  search: ({ andFilters = [], orFilters = [], notFilters = [], q = '', size = 100 } = {}) => {
     const params = new URLSearchParams({
-      filters: filters.join(','),
+      filters: andFilters.join(','),
+      or_filters: orFilters.join(','),
+      exclude: notFilters.join(','),
       q,
       size,
     })

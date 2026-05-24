@@ -11,57 +11,75 @@ router = APIRouter()
 @router.get("/", response_model=SearchResponse)
 async def search_documents(
     filters: str = "",      # comma-separated AND tag paths
+    or_filters: str = "",   # comma-separated OR tag paths (must match at least one)
     exclude: str = "",      # comma-separated NOT tag paths
-    q: str = "",            # free-text (supports -term for NOT)
+    q: str = "",            # free-text
     size: int = 50,
     from_: int = 0,
     es: AsyncElasticsearch = Depends(get_es),
 ):
     filter_list = [f.strip() for f in filters.split(",") if f.strip()]
+    or_list = [f.strip() for f in or_filters.split(",") if f.strip()]
     exclude_list = [f.strip() for f in exclude.split(",") if f.strip()]
 
     must: list = []
+    should: list = []
     must_not: list = []
 
-    # Hierarchical AND filters: term query on the path_hierarchy-analyzed field
-    # so "type/face" will match docs tagged with "type/face/emotion/positive" etc.
     for tag in filter_list:
         must.append({"term": {"tags.hierarchy": tag}})
 
-    # Hierarchical NOT filters
+    for tag in or_list:
+        should.append({"term": {"tags.hierarchy": tag}})
+
     for tag in exclude_list:
         must_not.append({"term": {"tags.hierarchy": tag}})
 
-    # Free-text with optional -term exclusion syntax
     if q.strip():
         terms = q.strip().split()
         include_terms = [t for t in terms if not t.startswith("-")]
         exclude_terms = [t[1:] for t in terms if t.startswith("-") and len(t) > 1]
 
         if include_terms:
-            must.append({
-                "multi_match": {
-                    "query": " ".join(include_terms),
-                    "fields": ["name^3", "description", "tags"],
-                    "type": "best_fields",
-                    "fuzziness": "AUTO",
+            query_text = " ".join(include_terms)
+            # english analyzer stems name/description at index time, so fuzzy multi_match
+            # handles "party" → "partying" etc. Tag wildcards catch substring matches on
+            # keyword paths (e.g. "face" inside "type/face/emotion/positive").
+            text_should: list = [
+                {
+                    "multi_match": {
+                        "query": query_text,
+                        "fields": ["name^3", "description"],
+                        "fuzziness": "AUTO",
+                    }
                 }
-            })
+            ]
+            for term in include_terms:
+                text_should.append({
+                    "wildcard": {"tags": {"value": f"*{term}*", "case_insensitive": True}}
+                })
+            must.append({"bool": {"should": text_should, "minimum_should_match": 1}})
 
         for excl in exclude_terms:
             must_not.append({
                 "multi_match": {
                     "query": excl,
-                    "fields": ["name", "tags"],
+                    "fields": ["name", "description"],
                 }
             })
+            must_not.append({
+                "wildcard": {"tags": {"value": f"*{excl}*", "case_insensitive": True}}
+            })
 
-    if not must and not must_not:
+    if not must and not should and not must_not:
         query = {"match_all": {}}
     else:
         bool_q: dict = {}
         if must:
             bool_q["must"] = must
+        if should:
+            bool_q["should"] = should
+            bool_q["minimum_should_match"] = 1
         if must_not:
             bool_q["must_not"] = must_not
         query = {"bool": bool_q}

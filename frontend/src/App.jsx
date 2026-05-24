@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Search, BookOpen, Smile, Loader, Database } from 'lucide-react'
 import { api } from './api/client'
 import DocumentForm from './components/DocumentForm'
 import DocumentCard from './components/DocumentCard'
+import DocumentDetail from './components/DocumentDetail'
 import SearchBuilder from './components/SearchBuilder'
 
 function useDebounce(value, delay) {
@@ -19,19 +20,29 @@ export default function App() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [filters, setFilters] = useState([])
+  const [andFilters, setAndFilters] = useState([])
+  const [orFilters, setOrFilters] = useState([])
+  const [notFilters, setNotFilters] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [seeding, setSeeding] = useState(false)
   const [seedDone, setSeedDone] = useState(false)
+  const [selectedDoc, setSelectedDoc] = useState(null)
 
+  const debouncedAnd = useDebounce(andFilters, 150)
+  const debouncedOr = useDebounce(orFilters, 150)
+  const debouncedNot = useDebounce(notFilters, 150)
   const debouncedQuery = useDebounce(searchQuery, 250)
-  const debouncedFilters = useDebounce(filters, 150)
 
   const fetchDocs = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const result = await api.search({ filters: debouncedFilters, q: debouncedQuery })
+      const result = await api.search({
+        andFilters: debouncedAnd,
+        orFilters: debouncedOr,
+        notFilters: debouncedNot,
+        q: debouncedQuery,
+      })
       setDocuments(result.documents)
       setTotal(result.total)
     } catch (err) {
@@ -39,13 +50,11 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [debouncedFilters, debouncedQuery])
+  }, [debouncedAnd, debouncedOr, debouncedNot, debouncedQuery])
 
   useEffect(() => { fetchDocs() }, [fetchDocs])
 
-  function handleDocCreated(doc) {
-    fetchDocs()
-  }
+  function handleDocCreated() { fetchDocs() }
 
   async function handleDelete(id) {
     try {
@@ -54,6 +63,20 @@ export default function App() {
     } catch (err) {
       alert(err.message)
     }
+  }
+
+  if (selectedDoc) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-900">
+        <div className="max-w-7xl mx-auto">
+          <DocumentDetail
+            doc={selectedDoc}
+            onBack={() => setSelectedDoc(null)}
+            onDelete={async (id) => { await api.deleteDocument(id); fetchDocs() }}
+          />
+        </div>
+      </div>
+    )
   }
 
   async function handleSeed() {
@@ -69,6 +92,23 @@ export default function App() {
       setSeeding(false)
     }
   }
+
+  function handleAddTag(tag, lane) {
+    const setter = lane === 'and' ? setAndFilters : lane === 'or' ? setOrFilters : setNotFilters
+    setter(prev => prev.includes(tag) ? prev : [...prev, tag])
+  }
+
+  function handleRemoveTag(tag, lane) {
+    const setter = lane === 'and' ? setAndFilters : lane === 'or' ? setOrFilters : setNotFilters
+    setter(prev => prev.filter(t => t !== tag))
+  }
+
+  function handleMoveTag(tag, fromLane, toLane) {
+    handleRemoveTag(tag, fromLane)
+    handleAddTag(tag, toLane)
+  }
+
+  const hasFilters = andFilters.length > 0 || orFilters.length > 0 || notFilters.length > 0 || searchQuery
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-900">
@@ -113,10 +153,12 @@ export default function App() {
                 <BookOpen className="w-3 h-3" /> How it works
               </h3>
               <div className="text-[11px] space-y-3 leading-relaxed">
-                <p><strong className="text-white">Hierarchy:</strong> Tags like <code className="text-yellow-400">type/face/emotion/positive</code> are stored with path_hierarchy analysis, so filtering on <code className="text-yellow-400">type/face</code> matches everything underneath.</p>
-                <p><strong className="text-white">AND Filters:</strong> Each filter chip narrows results (all must match).</p>
-                <p><strong className="text-white">Exclusion:</strong> Type <code className="text-white">-red</code> in the search box to exclude items tagged red.</p>
-                <p><strong className="text-white">Synonyms:</strong> Type <code className="text-white">smile</code> or <code className="text-white">happy</code> in the filter to find <code className="text-yellow-400">positive</code> emotion tags.</p>
+                <p><strong className="text-white">Hierarchy:</strong> Tags like <code className="text-yellow-400">type/face/emotion/positive</code> use path_hierarchy analysis, so filtering on <code className="text-yellow-400">type/face</code> matches everything underneath.</p>
+                <p><strong className="text-blue-400">AND lane:</strong> Results must match every tag — most restrictive.</p>
+                <p><strong className="text-emerald-400">OR lane:</strong> Results must match at least one tag — most permissive.</p>
+                <p><strong className="text-red-400">NOT lane:</strong> Results must not match any of these tags.</p>
+                <p><strong className="text-white">Drag tags</strong> between lanes to change their logic. Free text searches name, description, and tags.</p>
+                <p><strong className="text-white">Synonyms:</strong> Type <code className="text-white">smile</code> or <code className="text-white">happy</code> to find <code className="text-yellow-400">positive</code> emotion tags.</p>
               </div>
             </section>
           </div>
@@ -125,15 +167,18 @@ export default function App() {
           <div className="lg:col-span-3 space-y-5">
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <SearchBuilder
-                filters={filters}
-                onAddFilter={(path) => setFilters(f => f.includes(path) ? f : [...f, path])}
-                onRemoveFilter={(path) => setFilters(f => f.filter(x => x !== path))}
+                andFilters={andFilters}
+                orFilters={orFilters}
+                notFilters={notFilters}
+                onAdd={handleAddTag}
+                onRemove={handleRemoveTag}
+                onMove={handleMoveTag}
               />
               <div className="relative group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5 group-focus-within:text-yellow-500 transition-colors" />
                 <input
                   type="text"
-                  placeholder="Search name or description… use -term to exclude"
+                  placeholder="Free text search — name, description, tags…"
                   className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-yellow-400 focus:outline-none transition-all text-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -145,9 +190,9 @@ export default function App() {
               <p className="text-sm text-slate-500">
                 {loading ? 'Searching…' : `${total} result${total !== 1 ? 's' : ''}`}
               </p>
-              {(filters.length > 0 || searchQuery) && (
+              {hasFilters && (
                 <button
-                  onClick={() => { setFilters([]); setSearchQuery('') }}
+                  onClick={() => { setAndFilters([]); setOrFilters([]); setNotFilters([]); setSearchQuery('') }}
                   className="text-sm text-blue-500 hover:underline font-medium"
                 >
                   Clear all
@@ -178,8 +223,10 @@ export default function App() {
                   <DocumentCard
                     key={doc.id}
                     doc={doc}
-                    activeFilters={filters}
+                    andFilters={andFilters}
+                    orFilters={orFilters}
                     onDelete={handleDelete}
+                    onClick={() => setSelectedDoc(doc)}
                   />
                 ))}
               </div>

@@ -4,3 +4,4 @@ elasticsearch==8.13.0
 pydantic==2.7.1
 pydantic-settings==2.2.1
 python-multipart==0.0.9
+aiohttp

@@ -12,11 +12,13 @@ from .routers import taxonomy, documents, search, seed
 async def lifespan(app: FastAPI):
     client = await connect()
 
-    if not await client.indices.exists(index=settings.documents_index):
-        await client.indices.create(index=settings.documents_index, body=DOCUMENTS_MAPPING)
-
-    if not await client.indices.exists(index=settings.taxonomy_index):
-        await client.indices.create(index=settings.taxonomy_index, body=TAXONOMY_MAPPING)
+    for index, mapping in [
+        (settings.documents_index, DOCUMENTS_MAPPING),
+        (settings.taxonomy_index, TAXONOMY_MAPPING),
+    ]:
+        if await client.indices.exists(index=index):
+            await client.indices.delete(index=index)
+        await client.indices.create(index=index, body=mapping)
 
     yield
 

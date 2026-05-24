@@ -28,9 +28,13 @@ DOCUMENTS_MAPPING = {
         "properties": {
             "name": {
                 "type": "text",
+                "analyzer": "english",
                 "fields": {"keyword": {"type": "keyword"}}
             },
-            "description": {"type": "text"},
+            "description": {
+                "type": "text",
+                "analyzer": "english"
+            },
             "icon": {"type": "keyword"},
             "tags": {
                 "type": "keyword",

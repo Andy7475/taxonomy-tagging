@@ -4,12 +4,15 @@ function getLeaf(path) {
   return path.split('/').pop()
 }
 
-export default function DocumentCard({ doc, activeFilters = [], onDelete }) {
+export default function DocumentCard({ doc, andFilters = [], orFilters = [], onDelete, onClick }) {
   return (
-    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:border-yellow-400 hover:shadow-md transition-all group relative">
+    <div
+      className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:border-yellow-400 hover:shadow-md transition-all group relative cursor-pointer"
+      onClick={onClick}
+    >
       {onDelete && (
         <button
-          onClick={() => onDelete(doc.id)}
+          onClick={(e) => { e.stopPropagation(); onDelete(doc.id) }}
           className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-red-500"
           title="Delete"
         >
@@ -28,12 +31,15 @@ export default function DocumentCard({ doc, activeFilters = [], onDelete }) {
         )}
         <div className="flex flex-wrap justify-center gap-1">
           {doc.tags.map(tag => {
-            const isActive = activeFilters.some(f => tag.startsWith(f) || tag === f)
+            const isAnd = andFilters.some(f => tag === f || tag.startsWith(f + '/'))
+            const isOr = orFilters.some(f => tag === f || tag.startsWith(f + '/'))
             return (
               <span
                 key={tag}
                 className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tighter ${
-                  isActive ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-400'
+                  isAnd ? 'bg-blue-100 text-blue-700' :
+                  isOr  ? 'bg-emerald-100 text-emerald-700' :
+                  'bg-slate-100 text-slate-400'
                 }`}
                 title={tag}
               >
