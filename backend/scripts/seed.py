@@ -4885,7 +4885,6 @@ async def _ensure_parents(path: str, es: AsyncElasticsearch):
                 document={
                     "path": parent,
                     "label": segments[i - 1].replace("_", " ").title(),
-                    "parent_path": "/".join(segments[: i - 1]) if i > 1 else None,
                     "depth": i - 1,
                     "synonyms": [],
                     "description": None,
@@ -4904,7 +4903,6 @@ async def main():
     print(f"\nSeeding {len(TAXONOMY_NODES)} taxonomy nodes...")
     for node in TAXONOMY_NODES:
         segments = node["path"].split("/")
-        parent_path = "/".join(segments[:-1]) if len(segments) > 1 else None
         depth = len(segments) - 1
         await es.index(
             index=TAXONOMY_INDEX,
@@ -4912,7 +4910,6 @@ async def main():
             document={
                 "path": node["path"],
                 "label": node["label"],
-                "parent_path": parent_path,
                 "depth": depth,
                 "synonyms": [s.lower() for s in node["synonyms"]],
                 "description": None,

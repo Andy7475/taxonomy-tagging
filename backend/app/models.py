@@ -6,7 +6,6 @@ from datetime import datetime
 class TaxonomyNode(BaseModel):
     path: str
     label: str
-    parent_path: Optional[str] = None
     depth: int = 0
     synonyms: list[str] = []
     description: Optional[str] = None

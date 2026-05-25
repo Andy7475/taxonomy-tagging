@@ -27,13 +27,13 @@ async def search_documents(
     must_not: list = []
 
     for tag in filter_list:
-        must.append({"term": {"tags.hierarchy": tag}})
+        must.append({"prefix": {"tags": tag}})
 
     for tag in or_list:
-        should.append({"term": {"tags.hierarchy": tag}})
+        should.append({"prefix": {"tags": tag}})
 
     for tag in exclude_list:
-        must_not.append({"term": {"tags.hierarchy": tag}})
+        must_not.append({"prefix": {"tags": tag}})
 
     if q.strip():
         terms = q.strip().split()
@@ -56,7 +56,7 @@ async def search_documents(
             ]
             for term in include_terms:
                 text_should.append({
-                    "wildcard": {"tags": {"value": f"*{term}*", "case_insensitive": True}}
+                    "match": {"tags.segments": {"query": term}}
                 })
             must.append({"bool": {"should": text_should, "minimum_should_match": 1}})
 
@@ -68,7 +68,7 @@ async def search_documents(
                 }
             })
             must_not.append({
-                "wildcard": {"tags": {"value": f"*{excl}*", "case_insensitive": True}}
+                "match": {"tags.segments": {"query": excl}}
             })
 
     if not must and not should and not must_not:

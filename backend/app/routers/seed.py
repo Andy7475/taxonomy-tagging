@@ -27,7 +27,6 @@ async def _ensure_parents(path: str, es: AsyncElasticsearch):
                 document={
                     "path": parent,
                     "label": segments[i - 1].replace("_", " ").title(),
-                    "parent_path": "/".join(segments[: i - 1]) if i > 1 else None,
                     "depth": i - 1,
                     "synonyms": [],
                     "description": None,
@@ -42,7 +41,6 @@ async def seed_demo_data(es: AsyncElasticsearch = Depends(get_es)):
 
     for node in TAXONOMY_NODES:
         segments = node["path"].split("/")
-        parent_path = "/".join(segments[:-1]) if len(segments) > 1 else None
         depth = len(segments) - 1
         await es.index(
             index=settings.taxonomy_index,
@@ -50,7 +48,6 @@ async def seed_demo_data(es: AsyncElasticsearch = Depends(get_es)):
             document={
                 "path": node["path"],
                 "label": node["label"],
-                "parent_path": parent_path,
                 "depth": depth,
                 "synonyms": [s.lower() for s in node["synonyms"]],
                 "description": None,

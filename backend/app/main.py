@@ -16,9 +16,8 @@ async def lifespan(app: FastAPI):
         (settings.documents_index, DOCUMENTS_MAPPING),
         (settings.taxonomy_index, TAXONOMY_MAPPING),
     ]:
-        if await client.indices.exists(index=index):
-            await client.indices.delete(index=index)
-        await client.indices.create(index=index, body=mapping)
+        if not await client.indices.exists(index=index):
+            await client.indices.create(index=index, body=mapping)
 
     yield
 

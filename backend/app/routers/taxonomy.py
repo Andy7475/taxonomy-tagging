@@ -21,7 +21,6 @@ async def _ensure_parent_paths(path: str, es: AsyncElasticsearch):
                 document={
                     "path": parent,
                     "label": segments[i - 1].replace("_", " ").title(),
-                    "parent_path": "/".join(segments[: i - 1]) if i > 1 else None,
                     "depth": i - 1,
                     "synonyms": [],
                     "description": None,
@@ -34,13 +33,11 @@ async def create_taxonomy_node(
     node: TaxonomyNodeCreate, es: AsyncElasticsearch = Depends(get_es)
 ):
     segments = node.path.split("/")
-    parent_path = "/".join(segments[:-1]) if len(segments) > 1 else None
     depth = len(segments) - 1
 
     doc = {
         "path": node.path,
         "label": node.label,
-        "parent_path": parent_path,
         "depth": depth,
         "synonyms": [s.lower() for s in node.synonyms],
         "description": node.description,
@@ -72,16 +69,10 @@ async def suggest_tags(
             "query": {
                 "bool": {
                     "should": [
-                        # Exact synonym match — highest priority
-                        {"term": {"synonyms": q_lower}},
-                        # Label text match with fuzziness
+                        {"term": {"synonyms.keyword": q_lower}},
+                        {"match": {"synonyms": {"query": q, "boost": 2}}},
                         {"match": {"label": {"query": q, "fuzziness": "AUTO", "boost": 3}}},
-                        # Path segment prefix
-                        {"prefix": {"path": {"value": q_lower, "boost": 2}}},
-                        # Path contains query anywhere
-                        {"wildcard": {"path": {"value": f"*{q_lower}*"}}},
-                        # Synonym prefix (partial synonym)
-                        {"prefix": {"synonyms": q_lower}},
+                        {"match": {"path.segments": {"query": q}}},
                     ],
                     "minimum_should_match": 1,
                 }
