@@ -43,7 +43,9 @@ async def create_taxonomy_node(
         "description": node.description,
     }
 
-    await es.index(index=settings.taxonomy_index, id=node.path, document=doc, refresh=True)
+    await es.index(
+        index=settings.taxonomy_index, id=node.path, document=doc, refresh=True
+    )
     await _ensure_parent_paths(node.path, es)
 
     return TaxonomyNode(**doc)
@@ -71,8 +73,12 @@ async def suggest_tags(
                     "should": [
                         {"term": {"synonyms.keyword": q_lower}},
                         {"match": {"synonyms": {"query": q, "boost": 2}}},
-                        {"match": {"label": {"query": q, "fuzziness": "AUTO", "boost": 3}}},
-                        {"match": {"path.segments": {"query": q}}},
+                        {
+                            "match": {
+                                "label": {"query": q, "fuzziness": "AUTO", "boost": 3}
+                            }
+                        },
+                        {"prefix": {"path.segments": q}},
                     ],
                     "minimum_should_match": 1,
                 }
