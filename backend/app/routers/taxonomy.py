@@ -121,6 +121,39 @@ async def suggest_tags(
     return suggestions
 
 
+@router.get("/browse", response_model=list[TagSuggestion])
+async def browse_tags(
+    exclude: str = "",
+    es: AsyncElasticsearch = Depends(get_es),
+):
+    exclude_list = [e.strip() for e in exclude.split(",") if e.strip()]
+
+    result = await es.search(
+        index=settings.taxonomy_index,
+        body={
+            "size": 200,
+            "query": {
+                "bool": {
+                    "must": {"match_all": {}},
+                    "filter": {"range": {"depth": {"lte": 1}}},
+                }
+            },
+            "sort": [{"label.keyword": "asc"}],
+        },
+    )
+
+    return [
+        TagSuggestion(
+            path=hit["_source"]["path"],
+            label=hit["_source"]["label"],
+            depth=hit["_source"]["depth"],
+            matched_via="label",
+        )
+        for hit in result["hits"]["hits"]
+        if hit["_source"]["path"] not in exclude_list
+    ]
+
+
 @router.get("/tree")
 async def get_taxonomy_tree(es: AsyncElasticsearch = Depends(get_es)):
     result = await es.search(

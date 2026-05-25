@@ -18,6 +18,10 @@ export const api = {
     const params = new URLSearchParams({ q, exclude: exclude.join(','), limit: 12 })
     return request(`/taxonomy/suggest?${params}`)
   },
+  browseTags: (exclude = []) => {
+    const params = new URLSearchParams({ exclude: exclude.join(',') })
+    return request(`/taxonomy/browse?${params}`)
+  },
   getTaxonomyTree: () => request('/taxonomy/tree'),
   createTaxonomyNode: (node) => request('/taxonomy/', { method: 'POST', body: JSON.stringify(node) }),
 

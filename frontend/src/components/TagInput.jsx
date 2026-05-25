@@ -46,6 +46,18 @@ export default function TagInput({
     }
   }, [selectedTags, additionalExclude])
 
+  const fetchBrowse = useCallback(async () => {
+    setLoading(true)
+    try {
+      const results = await api.browseTags([...selectedTags, ...additionalExclude])
+      setSuggestions(results)
+    } catch {
+      setSuggestions([])
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedTags, additionalExclude])
+
   const debouncedFetch = useDebounce(fetchSuggestions, DEBOUNCE_MS)
 
   useEffect(() => {
@@ -102,8 +114,20 @@ export default function TagInput({
           className="flex-1 min-w-[120px] outline-none text-sm bg-transparent"
           placeholder={selectedTags.length === 0 ? placeholder : ''}
           value={input}
-          onChange={(e) => { setInput(e.target.value); setOpen(true) }}
-          onFocus={() => { if (input) setOpen(true) }}
+          onChange={(e) => {
+            const val = e.target.value
+            setInput(val)
+            setOpen(true)
+            if (!val.trim()) setSuggestions([])
+          }}
+          onFocus={() => {
+            if (input) {
+              setOpen(true)
+            } else {
+              fetchBrowse()
+              setOpen(true)
+            }
+          }}
         />
         {loading && (
           <span className="text-[10px] text-slate-400 self-center pr-1">…</span>
@@ -111,10 +135,11 @@ export default function TagInput({
       </div>
 
       {open && suggestions.length > 0 && (
-        <div className="absolute z-50 left-0 top-full mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute z-50 left-0 top-full mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-64">
           <div className="px-3 py-1.5 bg-slate-50 border-b text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            Matching Tags
+            {input.trim() ? 'Matching Tags' : 'Available Tags'}
           </div>
+          <div className="overflow-y-auto">
           {suggestions.map(s => (
             <button
               key={s.path}
@@ -136,6 +161,7 @@ export default function TagInput({
               <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-yellow-500 shrink-0" />
             </button>
           ))}
+          </div>
         </div>
       )}
     </div>

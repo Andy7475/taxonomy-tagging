@@ -5,7 +5,7 @@ echo "Tearing down containers and volumes..."
 docker compose down -v
 
 echo "Starting fresh (waiting for healthchecks)..."
-docker compose up -d --wait
+docker compose up -d --build --wait
 
 echo "Seeding data..."
 docker compose exec api uv run python scripts/seed.py http://elasticsearch:9200

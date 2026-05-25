@@ -5,7 +5,7 @@ function getLeaf(path) {
   return path.split('/').pop()
 }
 
-export default function DocumentCard({ doc, andFilters = [], orFilters = [], onDelete, onClick }) {
+export default function DocumentCard({ doc, andFilters = [], orFilters = [], onDelete, onClick, onTagClick }) {
   const [copied, setCopied] = useState(false)
 
   function handleCopy(e) {
@@ -55,17 +55,25 @@ export default function DocumentCard({ doc, andFilters = [], orFilters = [], onD
             const isAnd = andFilters.some(f => tag === f || tag.startsWith(f + '/'))
             const isOr = orFilters.some(f => tag === f || tag.startsWith(f + '/'))
             return (
-              <span
+              <button
                 key={tag}
-                className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-tighter ${
-                  isAnd ? 'bg-blue-100 text-blue-700' :
-                  isOr  ? 'bg-emerald-100 text-emerald-700' :
-                  'bg-slate-100 text-slate-400'
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onTagClick?.(tag) }}
+                className={`text-[8.8px] px-1.5 py-0.5 rounded-md font-mono hover:ring-1 hover:ring-emerald-400 hover:bg-emerald-50 transition-all ${
+                  isAnd ? 'bg-blue-100' :
+                  isOr  ? 'bg-emerald-100' :
+                  'bg-slate-100'
                 }`}
-                title={tag}
               >
-                {getLeaf(tag)}
-              </span>
+                {tag.includes('/') && (
+                  <span className={`${isAnd ? 'text-blue-400' : isOr ? 'text-emerald-400' : 'text-blue-800'}`}>
+                    {tag.split('/').slice(0, -1).join('/')}/
+                  </span>
+                )}
+                <span className={`font-bold ${isAnd ? 'text-blue-700' : isOr ? 'text-emerald-700' : 'text-slate-900'}`}>
+                  {getLeaf(tag)}
+                </span>
+              </button>
             )
           })}
         </div>

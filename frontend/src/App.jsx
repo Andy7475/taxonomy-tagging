@@ -227,6 +227,7 @@ export default function App() {
                     orFilters={orFilters}
                     onDelete={handleDelete}
                     onClick={() => setSelectedDoc(doc)}
+                    onTagClick={(tag) => handleAddTag(tag, 'or')}
                   />
                 ))}
               </div>
