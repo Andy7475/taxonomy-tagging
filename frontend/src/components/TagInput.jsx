@@ -16,6 +16,7 @@ const MATCHED_VIA_COLORS = {
   synonym: 'text-amber-600 bg-amber-50',
   label: 'text-blue-600 bg-blue-50',
   path: 'text-slate-500 bg-slate-50',
+  document: 'text-violet-600 bg-violet-50',
 }
 
 export default function TagInput({

@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, HTTPException, Depends
 from elasticsearch import AsyncElasticsearch, NotFoundError
 
@@ -64,7 +65,7 @@ async def suggest_tags(
     exclude_list = [e.strip() for e in exclude.split(",") if e.strip()]
     q_lower = q.lower()
 
-    result = await es.search(
+    taxonomy_query = es.search(
         index=settings.taxonomy_index,
         body={
             "size": min(limit * 4, 200),
@@ -87,13 +88,23 @@ async def suggest_tags(
         },
     )
 
+    doc_query = es.search(
+        index=settings.documents_index,
+        body={
+            "size": 20,
+            "query": {"multi_match": {"query": q, "fields": ["name^2", "description"]}},
+            "_source": ["tags"],
+        },
+    )
+
+    taxonomy_result, doc_result = await asyncio.gather(taxonomy_query, doc_query)
+
     suggestions: list[TagSuggestion] = []
     seen: set[str] = set()
 
-    for hit in result["hits"]["hits"]:
+    for hit in taxonomy_result["hits"]["hits"]:
         src = hit["_source"]
         path = src["path"]
-
         if path in exclude_list or path in seen:
             continue
         seen.add(path)
@@ -114,9 +125,39 @@ async def suggest_tags(
                 matched_via=matched_via,
             )
         )
-
         if len(suggestions) >= limit:
             break
+
+    # Collect tags from matching documents and look them up in taxonomy
+    doc_tags = {
+        tag
+        for hit in doc_result["hits"]["hits"]
+        for tag in hit["_source"].get("tags", [])
+        if tag not in seen and tag not in exclude_list
+    }
+
+    if doc_tags:
+        tag_lookup = await es.search(
+            index=settings.taxonomy_index,
+            body={
+                "size": len(doc_tags),
+                "query": {"ids": {"values": list(doc_tags)}},
+            },
+        )
+        for hit in tag_lookup["hits"]["hits"]:
+            src = hit["_source"]
+            path = src["path"]
+            if path in seen or path in exclude_list:
+                continue
+            seen.add(path)
+            suggestions.append(
+                TagSuggestion(
+                    path=path,
+                    label=src["label"],
+                    depth=src["depth"],
+                    matched_via="document",
+                )
+            )
 
     return suggestions
 
