@@ -16,4 +16,7 @@ Write-Host "Ingesting facility location ontology..."
 docker compose exec api uv run python -m scripts.ingest_locations
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+Write-Host "Seeding demo maintenance issues..."
+Invoke-RestMethod -Method Post -Uri "http://localhost:8000/api/maintenance-issues/seed" | Out-Null
+
 Write-Host "Ready."

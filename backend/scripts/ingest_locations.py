@@ -17,6 +17,7 @@ import hashlib
 import logging
 from pathlib import Path
 
+import owlrl
 from elasticsearch import AsyncElasticsearch
 from rdflib import Graph, Namespace, RDF, RDFS
 from rdflib.namespace import SKOS, OWL
@@ -118,9 +119,23 @@ class _UnionFind:
 
 
 def _sameas_closure(g: Graph) -> _UnionFind:
-    uf = _UnionFind()
+    """Equivalence classes derived via genuine OWL-RL entailment (owlrl's
+    built-in symmetric/transitive rules for owl:sameAs) rather than a
+    hand-rolled transitive walk. Reasoning is deliberately scoped to an
+    isolated copy of JUST the sameAs triples — never the full graph — so it
+    can't also touch isPartOf's declared transitivity, which the ancestor-
+    chain walk above needs to stay un-collapsed (see facility.ttl's comment
+    on why isPartOf is walked explicitly instead of relying on a reasoner)."""
+    sameas_only = Graph()
     for s, o in g.subject_objects(OWL.sameAs):
-        uf.union(s, o)
+        sameas_only.add((s, OWL.sameAs, o))
+
+    owlrl.DeductiveClosure(owlrl.OWLRL_Semantics).expand(sameas_only)
+
+    uf = _UnionFind()
+    for s, o in sameas_only.subject_objects(OWL.sameAs):
+        if s != o:
+            uf.union(s, o)
     return uf
 
 

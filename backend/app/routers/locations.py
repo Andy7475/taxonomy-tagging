@@ -32,11 +32,16 @@ async def suggest_locations(
                     "should": [
                         {"term": {"synonyms.keyword": q_lower}},
                         {"match": {"synonyms": {"query": q, "boost": 2}}},
+                        # Prefix match on any word of a synonym (e.g. "head"
+                        # -> "headquarters"), not just an exact/stemmed whole
+                        # word — this is what lets partial typing work.
+                        {"prefix": {"synonyms.words": q_lower}},
                         {
                             "match": {
                                 "label": {"query": q, "fuzziness": "AUTO", "boost": 3}
                             }
                         },
+                        {"prefix": {"label.words": q_lower}},
                         # `prefix` queries are not analyzed, so the term is
                         # lowercased explicitly to match path_segment_analyzer's
                         # lowercase-filtered index-time tokens (e.g. "ZoneA" ->

@@ -1,0 +1,52 @@
+@prefix geo: <http://www.opengis.net/ont/geosparql#> .
+
+# ---------------------------------------------------------------------------
+# facility_geo.ttl — a second, independent ABox layered onto the SAME
+# individuals declared in facility_instances.ttl, using the real OGC
+# GeoSPARQL vocabulary (geo:Feature / geo:hasGeometry / geo:asWKT).
+#
+# This file deliberately does not touch facility.ttl (the TBox) or
+# facility_instances.ttl (the containment ABox): the whole point being
+# demonstrated is that a brand-new kind of fact — "where is this, physically"
+# — can be attached to an existing URI as pure addition, no coordination
+# with the files that already describe that URI's containment/labels/
+# synonyms. Contrast this with the Elasticsearch side, where adding a new
+# fact (e.g. a geo_point field) means touching the index mapping and
+# reindexing every document.
+#
+# Coordinates are only given at Site and Building level — a Storey or Zone
+# doesn't have a meaningful point location of its own for map-pin purposes
+# in this demo. Points/polygons are plausible (fictional) locations around
+# London. WKT axis order is (longitude latitude), per the OGC/GeoSPARQL
+# convention — NOT (latitude longitude).
+#
+# Geometry kind varies deliberately by facility_type: a Site gets a POLYGON
+# (its footprint), a Building gets a POINT (too small a feature for a
+# footprint to matter at map-pin zoom levels). geo:asWKT carries either shape
+# under the exact same predicate — nothing else in this file (or the code
+# reading it) needs to know in advance which kind a given URI will have.
+# ---------------------------------------------------------------------------
+
+<https://example.org/facility/SiteOrange> a geo:Feature ;
+    geo:hasGeometry [
+        a geo:Geometry ;
+        geo:asWKT "POLYGON((-0.1300 51.5065, -0.1260 51.5065, -0.1260 51.5085, -0.1300 51.5085, -0.1300 51.5065))"^^geo:wktLiteral
+    ] .
+
+<https://example.org/facility/SiteOrange/MainBuilding> a geo:Feature ;
+    geo:hasGeometry [
+        a geo:Geometry ;
+        geo:asWKT "POINT(-0.1280 51.5075)"^^geo:wktLiteral
+    ] .
+
+<https://example.org/facility/SiteBlue> a geo:Feature ;
+    geo:hasGeometry [
+        a geo:Geometry ;
+        geo:asWKT "POLYGON((-0.0920 51.5140, -0.0870 51.5140, -0.0870 51.5160, -0.0920 51.5160, -0.0920 51.5140))"^^geo:wktLiteral
+    ] .
+
+<https://example.org/facility/SiteBlue/Annex> a geo:Feature ;
+    geo:hasGeometry [
+        a geo:Geometry ;
+        geo:asWKT "POINT(-0.0895 51.5148)"^^geo:wktLiteral
+    ] .

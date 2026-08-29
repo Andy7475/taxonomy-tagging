@@ -7,7 +7,11 @@ from elasticsearch import AsyncElasticsearch, NotFoundError
 
 from ..es_client import get_es
 from ..config import settings
-from ..models_locations import MaintenanceIssue, MaintenanceIssueCreate
+from ..models_locations import (
+    MaintenanceIssue,
+    MaintenanceIssueCreate,
+    MaintenanceIssueSearchResponse,
+)
 
 router = APIRouter()
 
@@ -58,6 +62,23 @@ async def _resolve_paths(
     return canonical_uri, paths
 
 
+async def _location_prefix_clauses(value: str, es: AsyncElasticsearch) -> list[dict]:
+    """Turn one location filter value into the `prefix` clauses that should
+    be OR'd together to match it: a URI resolves (via _resolve_paths) to
+    every path across its whole sameAs-merged identity — so an AND/OR/NOT
+    filter on a location correctly matches an issue regardless of which of
+    that location's known hierarchy frames the issue happens to have been
+    filed under. A bare path string (not a URI) is used directly."""
+    value = value.strip()
+    if not value:
+        return []
+    if value.startswith("http://") or value.startswith("https://"):
+        _, paths = await _resolve_paths(value, es)
+    else:
+        paths = [value]
+    return [{"prefix": {"location_path": p}} for p in paths]
+
+
 @router.post("/", response_model=MaintenanceIssue, status_code=201)
 async def create_issue(
     issue: MaintenanceIssueCreate, es: AsyncElasticsearch = Depends(get_es)
@@ -89,32 +110,87 @@ async def create_issue(
     return MaintenanceIssue(id=issue_id, **body)
 
 
-@router.get("/", response_model=list[MaintenanceIssue])
+@router.post("/seed")
+async def seed_demo_issues(es: AsyncElasticsearch = Depends(get_es)):
+    """Seed the demo maintenance issues from scripts/seed_maintenance_issues.py.
+    Uses fixed ids, so it's idempotent — safe to click again (e.g. after
+    re-ingesting the ontology). Requires the location ontology to already be
+    ingested; any demo issue whose location_uri isn't found is skipped."""
+    from scripts.seed_maintenance_issues import DEMO_ISSUES
+
+    now = datetime.now(timezone.utc).isoformat()
+    created = 0
+    skipped = []
+
+    for demo in DEMO_ISSUES:
+        canonical_uri, paths = await _resolve_paths(demo["location_uri"], es)
+        if canonical_uri is None:
+            skipped.append(demo["title"])
+            continue
+        body = {
+            "title": demo["title"],
+            "description": demo.get("description"),
+            "status": "open",
+            "priority": demo.get("priority", "medium"),
+            "location_uri": canonical_uri,
+            "location_path": paths,
+            "created_at": now,
+        }
+        await es.index(
+            index=settings.maintenance_issues_index, id=demo["id"], document=body
+        )
+        created += 1
+
+    await es.indices.refresh(index=settings.maintenance_issues_index)
+    return {"status": "ok", "created": created, "skipped": skipped}
+
+
+@router.get("/", response_model=MaintenanceIssueSearchResponse)
 async def list_issues(
-    under: str = "",
+    filters: str = "",      # AND: comma-separated location URIs (or bare paths) — must match every one
+    or_filters: str = "",   # OR: comma-separated — must match at least one
+    exclude: str = "",      # NOT: comma-separated — must match none
+    under: str = "",        # back-compat alias: equivalent to one extra AND filter
     size: int = 50,
     from_: int = 0,
     es: AsyncElasticsearch = Depends(get_es),
 ):
-    query: dict = {"match_all": {}}
+    filter_list = [f.strip() for f in filters.split(",") if f.strip()]
+    if under.strip():
+        filter_list.append(under.strip())
+    or_list = [f.strip() for f in or_filters.split(",") if f.strip()]
+    exclude_list = [f.strip() for f in exclude.split(",") if f.strip()]
 
-    under = under.strip()
-    if under:
-        if under.startswith("http://") or under.startswith("https://"):
-            _, prefixes = await _resolve_paths(under, es)
-            if not prefixes:
-                return []
-            # Match if the issue's location falls under ANY of the target's
-            # known paths — needed once a facility can have more than one
-            # valid ancestry (sameAs-linked owner/contractor hierarchies).
-            query = {
-                "bool": {
-                    "should": [{"prefix": {"location_path": p}} for p in prefixes],
-                    "minimum_should_match": 1,
-                }
-            }
-        else:
-            query = {"prefix": {"location_path": under}}
+    must: list = []
+    should: list = []
+    must_not: list = []
+
+    for value in filter_list:
+        clauses = await _location_prefix_clauses(value, es)
+        if not clauses:
+            # Unknown/unresolvable location — this AND condition can never
+            # be satisfied, so the whole query can't match anything.
+            return MaintenanceIssueSearchResponse(total=0, issues=[])
+        must.append({"bool": {"should": clauses, "minimum_should_match": 1}})
+
+    for value in or_list:
+        should.extend(await _location_prefix_clauses(value, es))
+
+    for value in exclude_list:
+        must_not.extend(await _location_prefix_clauses(value, es))
+
+    if not must and not should and not must_not:
+        query = {"match_all": {}}
+    else:
+        bool_q: dict = {}
+        if must:
+            bool_q["must"] = must
+        if should:
+            bool_q["should"] = should
+            bool_q["minimum_should_match"] = 1
+        if must_not:
+            bool_q["must_not"] = must_not
+        query = {"bool": bool_q}
 
     result = await es.search(
         index=settings.maintenance_issues_index,
@@ -125,7 +201,10 @@ async def list_issues(
             "sort": [{"created_at": {"order": "desc"}}],
         },
     )
-    return [MaintenanceIssue(id=h["_id"], **h["_source"]) for h in result["hits"]["hits"]]
+    issues = [MaintenanceIssue(id=h["_id"], **h["_source"]) for h in result["hits"]["hits"]]
+    return MaintenanceIssueSearchResponse(
+        total=result["hits"]["total"]["value"], issues=issues
+    )
 
 
 @router.get("/{issue_id}", response_model=MaintenanceIssue)

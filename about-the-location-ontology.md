@@ -19,6 +19,22 @@ This is a deliberate tradeoff, not an oversight:
 
 The ontology remains the source of truth and can be re-ingested any time the physical structure changes.
 
+## Geo: the other half — a live triple store, joined by URI
+
+The paragraph above ends with "if a genuinely relational query need ever showed up." Geo-location is that case, and it's handled differently on purpose.
+
+[ontology/facility_geo.ttl](ontology/facility_geo.ttl) is a second ABox, layered onto the same individuals `facility_instances.ttl` already declares (`Site`, `Building`), using the real OGC GeoSPARQL vocabulary: `geo:Feature`, `geo:hasGeometry`, `geo:asWKT`. It doesn't touch the TBox or the containment ABox at all — a new kind of fact is just new triples against an existing URI.
+
+Unlike locations, geo facts are **not** flattened into Elasticsearch. `backend/app/graph_store.py` loads all three TTL files into an in-process `rdflib.Graph()` at startup and keeps it there — a real, live, queryable triple store, just one running inside the FastAPI process rather than as a separate service. `backend/app/routers/geo.py` queries it with actual SPARQL:
+
+- `GET /api/geo/locations` — SPARQL only, no Elasticsearch: every `geo:Feature`'s point, parsed from WKT.
+- `GET /api/geo/map` — the join: resolves the same AND/OR/NOT location filters `LocationSearchBuilder` already builds against Elasticsearch's `facility_locations` index (to get matching facilities' `label`/`path`/`facility_type`), then asks the graph for those same URIs' geometry, and merges the two by `uri` in application code. Two independent stores, one shared identifier, no coordination needed beyond that.
+
+  A filter can match at any depth — a maintenance issue is filed against a Zone or Storey just as often as a Site — but only Site and Building carry a `geo:Feature`. Rather than dropping a Zone-level match on the floor, `graph_store.enclosing_geo_uris()` walks `?subject ies:isPartOf* ?ancestor` — a SPARQL 1.1 property-path traversal of `isPartOf`'s own declared `owl:TransitiveProperty` — to find whichever enclosing node(s) actually have geometry. This is plain SPARQL, not OWL reasoning: the `*` (zero-or-more) path is evaluated by the query engine at query time, no `owlrl` closure involved. One side-effect worth calling out: because this walk runs per sameAs-canonicalized subject, filtering by the contractor's Plant Room individual correctly surfaces *both* the contractor's Site Orange polygon *and* the owner's Main Building dot — each organization's `isPartOf` chain is walked independently and the two results land under the same canonical uri.
+- `POST /api/geo/sparql` — a restricted (SELECT-only), read-only playground for querying the graph directly, to make the point that this is a real triple store and not just an internal implementation detail behind `/map`.
+
+This is the tradeoff in the other direction from the locations index: no reindexing ever, and arbitrary SPARQL is available — at the cost of an in-memory store that doesn't scale past what one process can hold, and no persistence beyond the TTL files it re-parses from (`POST /api/geo/reload`, or automatically whenever `POST /api/locations/ingest` runs). For this demo's data volumes, and for a query pattern this open-ended, that's the right trade; a genuinely large or multi-process deployment would swap the in-process graph for a real triple-store service (e.g. Fuseki, which also adds native GeoSPARQL spatial functions this setup doesn't have — WKT parsing here is done in Python with `shapely` after the fact, not inside SPARQL).
+
 ## `uri` vs `path`
 
 Every indexed location document has two distinct fields:

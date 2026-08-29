@@ -60,12 +60,33 @@ export const api = {
   },
   ingestLocations: () => request('/locations/ingest', { method: 'POST' }),
 
+  // Geo (live SPARQL graph, joined with Elasticsearch by shared uri)
+  getGeoMap: ({ andUris = [], orUris = [], notUris = [] } = {}) => {
+    const params = new URLSearchParams({
+      filters: andUris.join(','),
+      or_filters: orUris.join(','),
+      exclude: notUris.join(','),
+    })
+    return request(`/geo/map?${params}`)
+  },
+  getFloorplan: (storeyUri) => {
+    const params = new URLSearchParams({ storey_uri: storeyUri })
+    return request(`/geo/floorplan?${params}`)
+  },
+  reloadGeoGraph: () => request('/geo/reload', { method: 'POST' }),
+  runSparql: (query) => request('/geo/sparql', { method: 'POST', body: JSON.stringify({ query }) }),
+
   // Maintenance issues
   createMaintenanceIssue: (issue) =>
     request('/maintenance-issues/', { method: 'POST', body: JSON.stringify(issue) }),
-  listMaintenanceIssues: ({ under = '' } = {}) => {
-    const params = new URLSearchParams({ under })
+  listMaintenanceIssues: ({ andUris = [], orUris = [], notUris = [] } = {}) => {
+    const params = new URLSearchParams({
+      filters: andUris.join(','),
+      or_filters: orUris.join(','),
+      exclude: notUris.join(','),
+    })
     return request(`/maintenance-issues/?${params}`)
   },
   deleteMaintenanceIssue: (id) => request(`/maintenance-issues/${id}`, { method: 'DELETE' }),
+  seedMaintenanceIssues: () => request('/maintenance-issues/seed', { method: 'POST' }),
 }

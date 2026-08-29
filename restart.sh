@@ -13,4 +13,7 @@ docker compose exec api uv run python scripts/seed.py http://elasticsearch:9200
 echo "Ingesting facility location ontology..."
 docker compose exec api uv run python -m scripts.ingest_locations
 
+echo "Seeding demo maintenance issues..."
+curl -sf -X POST http://localhost:8000/api/maintenance-issues/seed
+
 echo "Ready."

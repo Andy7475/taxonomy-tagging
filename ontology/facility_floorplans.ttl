@@ -1,0 +1,61 @@
+@prefix geo: <http://www.opengis.net/ont/geosparql#> .
+@prefix fp:  <http://example.org/ontology/floorplan#> .
+
+# ---------------------------------------------------------------------------
+# facility_floorplans.ttl — a THIRD independent ABox on the SAME Storey/Zone
+# individuals declared in facility_instances.ttl, alongside facility_geo.ttl
+# (lat/lon points). Same move again: attach a new kind of fact — "what does
+# this floor look like, and where are its zones" — as pure addition. No new
+# predicate is needed for the geometry itself: it's still geo:asWKT, the
+# exact literal shape facility_geo.ttl already uses for points. The only new
+# vocabulary is a small `fp:` namespace to say "this WKT is in floorplan-
+# local plan units, not WGS84 lat/lon" (fp:hasRegion instead of
+# geo:hasGeometry) and to carry each floorplan's own canvas size.
+#
+# This deliberately does NOT model a full 3D volume for a storey (see the
+# earlier discussion) — a Site/Building still gets one geo:asWKT POINT for
+# "where is it on a map" (facility_geo.ttl); a Storey instead gets a 2D
+# schematic plan with its Zones highlighted as regions within it. Only the
+# storeys that have a mock floor plan below carry these facts — Zone A on
+# Storey 1 and Storey 2 legitimately share a label but sit under different
+# fp:hasFloorplan canvases, same disambiguation story as everywhere else in
+# this demo.
+# ---------------------------------------------------------------------------
+
+<https://example.org/facility/SiteOrange/MainBuilding/Storey1> fp:hasFloorplan [
+    a fp:Floorplan ;
+    fp:width 100 ;
+    fp:height 60
+] .
+
+<https://example.org/facility/SiteOrange/MainBuilding/Storey1/PlantRoom> fp:hasRegion [
+    a geo:Geometry ;
+    geo:asWKT "POLYGON((5 5, 30 5, 30 25, 5 25, 5 5))"^^geo:wktLiteral
+] .
+
+<https://example.org/facility/SiteOrange/MainBuilding/Storey1/ZoneA> fp:hasRegion [
+    a geo:Geometry ;
+    geo:asWKT "POLYGON((60 5, 95 5, 95 55, 60 55, 60 5))"^^geo:wktLiteral
+] .
+
+<https://example.org/facility/SiteOrange/MainBuilding/Storey2> fp:hasFloorplan [
+    a fp:Floorplan ;
+    fp:width 100 ;
+    fp:height 60
+] .
+
+<https://example.org/facility/SiteOrange/MainBuilding/Storey2/ZoneA> fp:hasRegion [
+    a geo:Geometry ;
+    geo:asWKT "POLYGON((55 5, 95 5, 95 55, 55 55, 55 5))"^^geo:wktLiteral
+] .
+
+<https://example.org/facility/SiteBlue/Annex/GroundFloor> fp:hasFloorplan [
+    a fp:Floorplan ;
+    fp:width 80 ;
+    fp:height 50
+] .
+
+<https://example.org/facility/SiteBlue/Annex/GroundFloor/ZoneA> fp:hasRegion [
+    a geo:Geometry ;
+    geo:asWKT "POLYGON((5 5, 75 5, 75 45, 5 45, 5 5))"^^geo:wktLiteral
+] .

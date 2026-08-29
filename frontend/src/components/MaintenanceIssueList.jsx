@@ -1,5 +1,4 @@
-import { Database, Trash2 } from 'lucide-react'
-import LocationInput from './LocationInput'
+import { Database, ClipboardList, Trash2 } from 'lucide-react'
 
 const PRIORITY_COLORS = {
   low: 'bg-slate-100 text-slate-600',
@@ -14,40 +13,46 @@ function ancestorOf(path) {
 export default function MaintenanceIssueList({
   issues,
   loading,
-  underUri,
-  onUnderChange,
   onDelete,
   onIngest,
   ingesting,
-  ingestDone,
+  ingestResult,
+  onSeedIssues,
+  seedingIssues,
+  seedIssuesResult,
 }) {
   return (
     <div className="space-y-4">
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-        <div className="flex items-end justify-between flex-wrap gap-3">
-          <div className="flex-1 min-w-[240px]">
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-              filter: everything under…
-            </label>
-            <LocationInput
-              value={underUri}
-              onChange={onUnderChange}
-              placeholder="Filter by a Site, Building, Storey or Zone…"
-              chipColor="bg-emerald-100 text-emerald-800 border-emerald-200"
-            />
-          </div>
-          {!ingestDone && (
-            <button
-              onClick={onIngest}
-              disabled={ingesting}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-            >
-              <Database className="w-4 h-4" />
-              {ingesting ? 'Ingesting…' : 'Ingest Ontology'}
-            </button>
-          )}
-          {ingestDone && <span className="text-emerald-600 text-sm font-medium">✓ Ingested</span>}
-        </div>
+      <div className="flex items-center justify-end gap-3 flex-wrap">
+        {ingestResult && (
+          <span className="text-emerald-600 text-xs font-medium">
+            ✓ {ingestResult.facilities} facilities → {ingestResult.documents} docs
+          </span>
+        )}
+        <button
+          onClick={onIngest}
+          disabled={ingesting}
+          title="Re-parses ontology/*.ttl from disk — safe to click again after editing the TTL"
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+        >
+          <Database className="w-4 h-4" />
+          {ingesting ? 'Ingesting…' : ingestResult ? 'Re-ingest Ontology' : 'Ingest Ontology'}
+        </button>
+        {seedIssuesResult && (
+          <span className="text-blue-600 text-xs font-medium">
+            ✓ {seedIssuesResult.created} demo issues
+            {seedIssuesResult.skipped.length > 0 && ` (${seedIssuesResult.skipped.length} skipped — ingest ontology first)`}
+          </span>
+        )}
+        <button
+          onClick={onSeedIssues}
+          disabled={seedingIssues}
+          title="Creates a handful of demo maintenance issues — requires the ontology to be ingested first"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        >
+          <ClipboardList className="w-4 h-4" />
+          {seedingIssues ? 'Seeding…' : 'Seed Demo Issues'}
+        </button>
       </div>
 
       {loading ? (
@@ -56,7 +61,7 @@ export default function MaintenanceIssueList({
         <div className="py-16 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200">
           <p className="text-slate-400 font-medium">No maintenance issues yet.</p>
           <p className="text-slate-400 text-sm mt-2">
-            Click <strong>Ingest Ontology</strong>, then report an issue.
+            Click <strong>Ingest Ontology</strong>, then <strong>Seed Demo Issues</strong> (or report one yourself).
           </p>
         </div>
       ) : (

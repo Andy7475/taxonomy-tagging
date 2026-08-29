@@ -42,7 +42,7 @@
 <https://example.org/facility/SiteOrange/MainBuilding> a ies:Building ;
     rdfs:label "Main Building" ;
     rdfs:comment "Primary office building on Site Orange; houses reception and open-plan floors 1-3." ;
-    skos:altLabel "HQ" ;
+    skos:altLabel "HQ" , "Headquarters", "MOB" ;
     ies:isPartOf <https://example.org/facility/SiteOrange> .
 
 <https://example.org/facility/SiteOrange/MainBuilding/Storey1> a ies:Storey ;
@@ -85,23 +85,3 @@
     rdfs:label "Zone A" ;
     rdfs:comment "Storage and loading bay." ;
     ies:isPartOf <https://example.org/facility/SiteBlue/Annex/GroundFloor> .
-
-# --- Contractor hierarchy (separate identifiers, reconciled via owl:sameAs) -
-
-<https://example.org/facility/ContractorSite7> a ies:Site ;
-    rdfs:label "Contractor Site 7" .
-
-<https://example.org/facility/ContractorSite7/BlockB> a ies:Building ;
-    rdfs:label "Block B" ;
-    ies:isPartOf <https://example.org/facility/ContractorSite7> .
-
-<https://example.org/facility/ContractorSite7/BlockB/GroundFloor> a ies:Storey ;
-    rdfs:label "Ground Floor" ;
-    ies:isPartOf <https://example.org/facility/ContractorSite7/BlockB> ;
-    owl:sameAs <https://example.org/facility/SiteOrange/MainBuilding/Storey1> .
-
-<https://example.org/facility/ContractorSite7/BlockB/GroundFloor/PlantRoomX> a ies:Zone ;
-    rdfs:label "Plant Room (PR-114)" ;
-    rdfs:comment "Contractor's own reference for the same HVAC plant room." ;
-    ies:isPartOf <https://example.org/facility/ContractorSite7/BlockB/GroundFloor> ;
-    owl:sameAs <https://example.org/facility/SiteOrange/MainBuilding/Storey1/PlantRoom> .

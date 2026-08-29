@@ -71,14 +71,27 @@ LOCATIONS_MAPPING = {
             "label": {
                 "type": "text",
                 "analyzer": "english",
-                "fields": {"keyword": {"type": "keyword"}},
+                "fields": {
+                    "keyword": {"type": "keyword"},
+                    # Prefix-queryable, word-tokenized but NOT stemmed —
+                    # `prefix` queries aren't run through an analyzer, so
+                    # matching against the "english" field above would
+                    # compare an unstemmed query term (e.g. "offic") against
+                    # stemmed tokens ("offic" for "office"), which is
+                    # unreliable. The built-in "standard" analyzer just
+                    # lowercases + splits on word boundaries.
+                    "words": {"type": "text", "analyzer": "standard"},
+                },
             },
             "facility_type": {"type": "keyword"},
             "depth": {"type": "integer"},
             "synonyms": {
                 "type": "text",
                 "analyzer": "english",
-                "fields": {"keyword": {"type": "keyword"}},
+                "fields": {
+                    "keyword": {"type": "keyword"},
+                    "words": {"type": "text", "analyzer": "standard"},
+                },
             },
             "description": {"type": "text", "analyzer": "english"},
         }

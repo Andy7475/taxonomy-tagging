@@ -14,6 +14,32 @@ class Location(BaseModel):
     description: Optional[str] = None
 
 
+class GeoFeature(BaseModel):
+    uri: str
+    geometry_type: str  # "Point" or "Polygon"
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    polygon: Optional[list[list[float]]] = None  # [[lat, lon], ...] ring, Polygon only
+
+
+class MapLocation(GeoFeature):
+    label: str
+    path: str
+    facility_type: str
+
+
+class FloorplanZone(BaseModel):
+    uri: str
+    label: str
+    points: list[list[float]]
+
+
+class FloorplanResponse(BaseModel):
+    width: float
+    height: float
+    zones: list[FloorplanZone]
+
+
 class LocationSuggestion(BaseModel):
     uri: str
     path: str
@@ -40,3 +66,8 @@ class MaintenanceIssueCreate(BaseModel):
     status: str = "open"
     priority: str = "medium"
     location_uri: str
+
+
+class MaintenanceIssueSearchResponse(BaseModel):
+    total: int
+    issues: list[MaintenanceIssue]
