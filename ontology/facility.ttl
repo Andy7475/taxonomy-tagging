@@ -1,0 +1,55 @@
+@prefix ies:  <http://example.org/ontology/ies-lite#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+# ---------------------------------------------------------------------------
+# facility.ttl — TBox (schema) for the facility-locations demo
+#
+# Naming is INSPIRED by IES (the UK "Information Exchange Standard" family
+# of ontologies, e.g. dstl/IES4) — Facility, isPartOf — but this is a small,
+# self-contained, local ontology, NOT an import of real IES4. Real IES4
+# models containment via reified, time-bounded "state" objects (4D fluents);
+# this file deliberately uses plain OWL classes and a plain object property
+# instead, to keep the ontology easy to author and query with straightforward
+# SPARQL / rdflib graph walks.
+# ---------------------------------------------------------------------------
+
+ies:Facility a owl:Class ;
+    rdfs:label "Facility" ;
+    rdfs:comment "A physical facility of any kind. Base class for the local Site/Building/Storey/Zone hierarchy." .
+
+ies:Site a owl:Class ;
+    rdfs:subClassOf ies:Facility ;
+    rdfs:label "Site" .
+
+ies:Building a owl:Class ;
+    rdfs:subClassOf ies:Facility ;
+    rdfs:label "Building" .
+
+ies:Storey a owl:Class ;
+    rdfs:subClassOf ies:Facility ;
+    rdfs:label "Storey" .
+
+ies:Zone a owl:Class ;
+    rdfs:subClassOf ies:Facility ;
+    rdfs:label "Zone" .
+
+# Containment. Declared transitive because containment genuinely is
+# transitive and this documents intent for any future SPARQL property-path
+# use (e.g. `?x ies:isPartOf+ ?y`). The build-time ingestion script does its
+# own explicit graph walk rather than relying on this for reasoning, because
+# a single isPartOf step can have more than one target (see
+# facility_instances.ttl's Plant Room example) and every resulting chain
+# must be enumerated, not collapsed by a reasoner into an undifferentiated
+# closure.
+ies:isPartOf a owl:ObjectProperty, owl:TransitiveProperty ;
+    rdfs:domain ies:Facility ;
+    rdfs:range ies:Facility ;
+    rdfs:label "is part of" .
+
+# Instance-level vocabulary conventions (not declared here, just documented):
+#   rdfs:label    — exactly one per instance; the primary display name.
+#   rdfs:comment  — 0 or 1 per instance; free-text description.
+#   skos:altLabel — 0..n per instance; synonyms (e.g. "HQ" for a building).

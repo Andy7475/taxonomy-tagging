@@ -27,6 +27,9 @@ services:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - DOCUMENTS_INDEX=taxonomy_documents
       - TAXONOMY_INDEX=taxonomy_paths
+      - LOCATIONS_INDEX=facility_locations
+      - MAINTENANCE_ISSUES_INDEX=maintenance_issues
+      - ONTOLOGY_DIR=/app/ontology
     ports:
       - "8000:8000"
     depends_on:
@@ -34,6 +37,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - ./ontology:/app/ontology
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\""]

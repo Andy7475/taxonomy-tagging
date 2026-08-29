@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, BookOpen, Smile, Loader, Database } from 'lucide-react'
+import { Search, BookOpen, Smile, Loader, Database, MapPin } from 'lucide-react'
 import { api } from './api/client'
 import DocumentForm from './components/DocumentForm'
 import DocumentCard from './components/DocumentCard'
 import DocumentDetail from './components/DocumentDetail'
 import SearchBuilder from './components/SearchBuilder'
+import LocationsDemo from './pages/LocationsDemo'
 
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value)
@@ -27,6 +28,7 @@ export default function App() {
   const [seeding, setSeeding] = useState(false)
   const [seedDone, setSeedDone] = useState(false)
   const [selectedDoc, setSelectedDoc] = useState(null)
+  const [tab, setTab] = useState('emoji') // 'emoji' | 'locations'
 
   const debouncedAnd = useDebounce(andFilters, 150)
   const debouncedOr = useDebounce(orFilters, 150)
@@ -124,7 +126,25 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {!seedDone && (
+            <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1 gap-1">
+              <button
+                onClick={() => setTab('emoji')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  tab === 'emoji' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Smile className="w-3.5 h-3.5" /> Emoji Tagging Demo
+              </button>
+              <button
+                onClick={() => setTab('locations')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  tab === 'locations' ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <MapPin className="w-3.5 h-3.5" /> Facility Locations Demo
+              </button>
+            </div>
+            {tab === 'emoji' && !seedDone && (
               <button
                 onClick={handleSeed}
                 disabled={seeding}
@@ -134,10 +154,13 @@ export default function App() {
                 {seeding ? 'Seeding…' : 'Seed Demo Data'}
               </button>
             )}
-            {seedDone && <span className="text-emerald-600 text-sm font-medium">✓ Seeded</span>}
+            {tab === 'emoji' && seedDone && <span className="text-emerald-600 text-sm font-medium">✓ Seeded</span>}
           </div>
         </header>
 
+        {tab === 'locations' ? (
+          <LocationsDemo />
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* LEFT: Add Document */}
           <div className="space-y-6 lg:col-span-1">
@@ -234,6 +257,7 @@ export default function App() {
             )}
           </div>
         </div>
+        )}
       </div>
     </div>
   )

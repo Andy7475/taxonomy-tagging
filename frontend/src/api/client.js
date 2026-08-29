@@ -44,4 +44,28 @@ export const api = {
 
   // Seed
   health: () => request('/health'),
+
+  // Locations
+  suggestLocations: (q, exclude = []) => {
+    const params = new URLSearchParams({ q, exclude: exclude.join(','), limit: 12 })
+    return request(`/locations/suggest?${params}`)
+  },
+  browseLocations: (exclude = []) => {
+    const params = new URLSearchParams({ exclude: exclude.join(',') })
+    return request(`/locations/browse?${params}`)
+  },
+  resolveLocation: (uri) => {
+    const params = new URLSearchParams({ uri })
+    return request(`/locations/resolve?${params}`)
+  },
+  ingestLocations: () => request('/locations/ingest', { method: 'POST' }),
+
+  // Maintenance issues
+  createMaintenanceIssue: (issue) =>
+    request('/maintenance-issues/', { method: 'POST', body: JSON.stringify(issue) }),
+  listMaintenanceIssues: ({ under = '' } = {}) => {
+    const params = new URLSearchParams({ under })
+    return request(`/maintenance-issues/?${params}`)
+  },
+  deleteMaintenanceIssue: (id) => request(`/maintenance-issues/${id}`, { method: 'DELETE' }),
 }

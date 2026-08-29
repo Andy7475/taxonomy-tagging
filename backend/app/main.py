@@ -4,8 +4,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .es_client import connect, disconnect, get_es
-from .indices import DOCUMENTS_MAPPING, TAXONOMY_MAPPING
-from .routers import taxonomy, documents, search, seed
+from .indices import (
+    DOCUMENTS_MAPPING,
+    TAXONOMY_MAPPING,
+    LOCATIONS_MAPPING,
+    MAINTENANCE_ISSUES_MAPPING,
+)
+from .routers import taxonomy, documents, search, seed, locations, maintenance_issues
 
 
 @asynccontextmanager
@@ -15,6 +20,8 @@ async def lifespan(app: FastAPI):
     for index, mapping in [
         (settings.documents_index, DOCUMENTS_MAPPING),
         (settings.taxonomy_index, TAXONOMY_MAPPING),
+        (settings.locations_index, LOCATIONS_MAPPING),
+        (settings.maintenance_issues_index, MAINTENANCE_ISSUES_MAPPING),
     ]:
         if not await client.indices.exists(index=index):
             await client.indices.create(index=index, body=mapping)
@@ -42,6 +49,12 @@ app.include_router(taxonomy.router, prefix="/api/taxonomy", tags=["taxonomy"])
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(seed.router, prefix="/api", tags=["seed"])
+app.include_router(locations.router, prefix="/api/locations", tags=["locations"])
+app.include_router(
+    maintenance_issues.router,
+    prefix="/api/maintenance-issues",
+    tags=["maintenance-issues"],
+)
 
 
 @app.get("/api/health")

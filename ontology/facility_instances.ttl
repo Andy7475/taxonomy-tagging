@@ -1,0 +1,107 @@
+@prefix ies:  <http://example.org/ontology/ies-lite#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+
+# ---------------------------------------------------------------------------
+# facility_instances.ttl — ABox (sample instance data) for the facility-
+# locations demo. See facility.ttl for the class/property definitions.
+#
+# URIs are minted from the *primary* containment chain for human
+# readability, e.g. https://example.org/facility/SiteOrange/MainBuilding —
+# this is a pragmatic simplification, not linked-data best practice: real
+# practice tends to avoid baking one hierarchy into an identifier, since an
+# entity can have more than one legitimate parent (see the Plant Room
+# example below). The isPartOf triples — not the URI's own shape — remain
+# the actual source of truth the ingestion script reads to build display
+# paths. Full IRIs (not prefixed names) are used throughout because Turtle's
+# prefixed-name syntax does not allow unescaped "/" in the local part.
+#
+# This dataset demonstrates three distinct situations:
+#   1. Two DIFFERENT physical zones that happen to share a label ("Zone A"
+#      under Storey1 and Storey2 of Main Building, plus a third under
+#      Site Blue) — disambiguated by distinct URIs and distinct paths.
+#   2. A synonym on a Building ("HQ" for Main Building).
+#   3. TWO SEPARATE individuals denoting the SAME physical facility, each
+#      minted and named by a different organization (the owner's Plant Room
+#      vs. the contractor's "Plant Room (PR-114)", and the owner's Storey 1
+#      vs. the contractor's Ground Floor) — declared equivalent via
+#      owl:sameAs rather than one individual claiming two physical parents
+#      (which would be inconsistent: a room can't literally be inside two
+#      different storeys). Note the Building/Site levels above them are
+#      deliberately NOT declared sameAs — the contractor's admin groupings
+#      don't need to line up with the owner's for the Storey/Zone-level
+#      equivalence to be meaningful.
+# ---------------------------------------------------------------------------
+
+# --- Site Orange ------------------------------------------------------------
+
+<https://example.org/facility/SiteOrange> a ies:Site ;
+    rdfs:label "Site Orange" .
+
+<https://example.org/facility/SiteOrange/MainBuilding> a ies:Building ;
+    rdfs:label "Main Building" ;
+    rdfs:comment "Primary office building on Site Orange; houses reception and open-plan floors 1-3." ;
+    skos:altLabel "HQ" ;
+    ies:isPartOf <https://example.org/facility/SiteOrange> .
+
+<https://example.org/facility/SiteOrange/MainBuilding/Storey1> a ies:Storey ;
+    rdfs:label "Storey 1" ;
+    ies:isPartOf <https://example.org/facility/SiteOrange/MainBuilding> .
+
+<https://example.org/facility/SiteOrange/MainBuilding/Storey2> a ies:Storey ;
+    rdfs:label "Storey 2" ;
+    ies:isPartOf <https://example.org/facility/SiteOrange/MainBuilding> .
+
+<https://example.org/facility/SiteOrange/MainBuilding/Storey1/ZoneA> a ies:Zone ;
+    rdfs:label "Zone A" ;
+    rdfs:comment "Meeting rooms and printer bay near the south stairwell." ;
+    ies:isPartOf <https://example.org/facility/SiteOrange/MainBuilding/Storey1> .
+
+<https://example.org/facility/SiteOrange/MainBuilding/Storey2/ZoneA> a ies:Zone ;
+    rdfs:label "Zone A" ;
+    rdfs:comment "Open-plan desks near the east windows." ;
+    ies:isPartOf <https://example.org/facility/SiteOrange/MainBuilding/Storey2> .
+
+<https://example.org/facility/SiteOrange/MainBuilding/Storey1/PlantRoom> a ies:Zone ;
+    rdfs:label "Plant Room" ;
+    rdfs:comment "HVAC plant and electrical intake." ;
+    ies:isPartOf <https://example.org/facility/SiteOrange/MainBuilding/Storey1> .
+
+# --- Site Blue ---------------------------------------------------------------
+
+<https://example.org/facility/SiteBlue> a ies:Site ;
+    rdfs:label "Site Blue" .
+
+<https://example.org/facility/SiteBlue/Annex> a ies:Building ;
+    rdfs:label "Annex" ;
+    ies:isPartOf <https://example.org/facility/SiteBlue> .
+
+<https://example.org/facility/SiteBlue/Annex/GroundFloor> a ies:Storey ;
+    rdfs:label "Ground Floor" ;
+    ies:isPartOf <https://example.org/facility/SiteBlue/Annex> .
+
+<https://example.org/facility/SiteBlue/Annex/GroundFloor/ZoneA> a ies:Zone ;
+    rdfs:label "Zone A" ;
+    rdfs:comment "Storage and loading bay." ;
+    ies:isPartOf <https://example.org/facility/SiteBlue/Annex/GroundFloor> .
+
+# --- Contractor hierarchy (separate identifiers, reconciled via owl:sameAs) -
+
+<https://example.org/facility/ContractorSite7> a ies:Site ;
+    rdfs:label "Contractor Site 7" .
+
+<https://example.org/facility/ContractorSite7/BlockB> a ies:Building ;
+    rdfs:label "Block B" ;
+    ies:isPartOf <https://example.org/facility/ContractorSite7> .
+
+<https://example.org/facility/ContractorSite7/BlockB/GroundFloor> a ies:Storey ;
+    rdfs:label "Ground Floor" ;
+    ies:isPartOf <https://example.org/facility/ContractorSite7/BlockB> ;
+    owl:sameAs <https://example.org/facility/SiteOrange/MainBuilding/Storey1> .
+
+<https://example.org/facility/ContractorSite7/BlockB/GroundFloor/PlantRoomX> a ies:Zone ;
+    rdfs:label "Plant Room (PR-114)" ;
+    rdfs:comment "Contractor's own reference for the same HVAC plant room." ;
+    ies:isPartOf <https://example.org/facility/ContractorSite7/BlockB/GroundFloor> ;
+    owl:sameAs <https://example.org/facility/SiteOrange/MainBuilding/Storey1/PlantRoom> .
